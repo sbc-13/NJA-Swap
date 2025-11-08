@@ -241,5 +241,35 @@ describe("nja-swap", () => {
         }
     });
 
-    
+    it("Multiple sequential swaps A→B→A maintain invariant", async () => {
+        console.log("🔧 TEST 12: Sequential swaps\n");
+
+        const poolBefore = await program.account.pool.fetch(pool);
+        const kBefore = poolBefore.reserveA.toNumber() * poolBefore.reserveB.toNumber();
+        console.log("📊 K before swaps:", kBefore);
+
+        // Swap A→B
+        const amountIn1 = new anchor.BN(100 * 1e9);
+        await program.methods.swap(amountIn1, new anchor.BN(0), true).accounts({
+            pool, poolAuthority, tokenAVault, tokenBVault,
+            userTokenA, userTokenB, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+        }).signers([user]).rpc();
+
+        // Swap B→A
+        const amountIn2 = new anchor.BN(100 * 1e9);
+        await program.methods.swap(amountIn2, new anchor.BN(0), false).accounts({
+            pool, poolAuthority, tokenAVault, tokenBVault,
+            userTokenA, userTokenB, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+        }).signers([user]).rpc();
+
+        const poolAfter = await program.account.pool.fetch(pool);
+        const kAfter = poolAfter.reserveA.toNumber() * poolAfter.reserveB.toNumber();
+        console.log("📊 K after swaps:", kAfter);
+
+        // K should increase due to fees (0.3% per swap = 0.6% total)
+        assert(kAfter >= kBefore, "K invariant should increase with fees");
+        console.log("✅ Sequential swaps maintain invariant\n");
+    });
+
+   
 });
