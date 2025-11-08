@@ -4,6 +4,8 @@ A lightweight AMM DEX on Solana. Swap tokens, provide liquidity, earn fees.
 
 **Built by Team NJA** (Nouhalya · Joseph · Ankan) · Solana Bootcamp 2025
 
+📸 **[View Demo Guide with Screenshots →](DEMO.md)**
+
 ---
 
 ## Features
@@ -118,4 +120,4 @@ anchor build && anchor deploy
 
 ---
 
-**Team NJA** · Solana Bootcamp 2025
+**Team NJA (#13)** · Solana Bootcamp 2025

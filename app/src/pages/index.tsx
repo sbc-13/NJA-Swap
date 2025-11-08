@@ -104,14 +104,14 @@ export default function Home() {
     }
   }, [wallet, mintsValid, pdas, tokenA, tokenB]);
 
-  const run = useCallback(async (fn: () => Promise<string | void>) => {
+  const run = useCallback(async (fn: () => Promise<string | void>, operation?: string) => {
     try {
-      setStatus("⏳ Sending...");
+      setStatus(`⏳ ${operation || "Sending transaction"}...`);
       const sig = (await fn()) as string | undefined;
-      setStatus(sig ? `✅ Tx: ${sig}` : "✅ Done");
+      setStatus(sig ? `✅ ${operation || "Transaction"} successful! Tx: ${sig.slice(0, 8)}...${sig.slice(-8)}` : "✅ Done");
     } catch (e: any) {
       console.error(e);
-      setStatus(`❌ ${e?.message || e}`);
+      setStatus(`❌ ${operation || "Transaction"} failed: ${e?.message || e}`);
     }
   }, []);
 
@@ -144,8 +144,12 @@ export default function Home() {
     const signed = await wallet.signTransaction!(tx);
     const sig = await program.provider.connection.sendRawTransaction(signed.serialize());
     await program.provider.connection.confirmTransaction(sig, "confirmed");
+
+    // Reload balances after successful operation
+    loadBalances();
+
     return sig;
-  }, [wallet, mintsValid, pdas, tokenA, tokenB]);
+  }, [wallet, mintsValid, pdas, tokenA, tokenB, loadBalances]);
 
   const [amountA, setAmountA] = useState("100");
   const [amountB, setAmountB] = useState("100");
@@ -189,8 +193,12 @@ export default function Home() {
     const signed = await wallet.signTransaction(tx);
     const sig = await program.provider.connection.sendRawTransaction(signed.serialize());
     await program.provider.connection.confirmTransaction(sig, "confirmed");
+
+    // Reload balances after successful operation
+    loadBalances();
+
     return sig;
-  }, [wallet, mintsValid, pdas, tokenA, tokenB, amountA, amountB]);
+  }, [wallet, mintsValid, pdas, tokenA, tokenB, amountA, amountB, loadBalances]);
 
   const [swapIn, setSwapIn] = useState("10");
   const [swapDir, setSwapDir] = useState<"AtoB" | "BtoA">("AtoB");
@@ -234,8 +242,12 @@ export default function Home() {
     const signed = await wallet.signTransaction!(tx);
     const sig = await program.provider.connection.sendRawTransaction(signed.serialize());
     await program.provider.connection.confirmTransaction(sig, "confirmed");
+
+    // Reload balances after successful operation
+    loadBalances();
+
     return sig;
-  }, [wallet, mintsValid, pdas, tokenA, tokenB, swapIn, swapDir, minOut]);
+  }, [wallet, mintsValid, pdas, tokenA, tokenB, swapIn, swapDir, minOut, loadBalances]);
 
   const [lpAmount, setLpAmount] = useState("0");
 
@@ -278,8 +290,12 @@ export default function Home() {
     const signed = await wallet.signTransaction!(tx);
     const sig = await program.provider.connection.sendRawTransaction(signed.serialize());
     await program.provider.connection.confirmTransaction(sig, "confirmed");
+
+    // Reload balances after successful operation
+    loadBalances();
+
     return sig;
-  }, [wallet, mintsValid, pdas, tokenA, tokenB, lpAmount]);
+  }, [wallet, mintsValid, pdas, tokenA, tokenB, lpAmount, loadBalances]);
 
   // Auto-load balances when wallet connects or tokens change
   useEffect(() => {
@@ -441,7 +457,7 @@ export default function Home() {
       <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
         <button
           disabled={!mintsValid || !wallet.connected}
-          onClick={() => run(onInit)}
+          onClick={() => run(onInit, "Pool initialization")}
           style={{
             padding: "12px 24px",
             background: !mintsValid || !wallet.connected ? "#cbd5e0" : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -488,7 +504,7 @@ export default function Home() {
           <label>Amount B</label>
           <input value={amountB} onChange={(e) => setAmountB(e.target.value)} />
         </div>
-        <button disabled={!mintsValid || !wallet.connected} onClick={() => run(onAddLiquidity)}>Add</button>
+        <button disabled={!mintsValid || !wallet.connected} onClick={() => run(onAddLiquidity, `Add liquidity: ${amountA} Token A + ${amountB} Token B`)}>Add</button>
       </div>
 
       <hr style={{ margin: "20px 0" }} />
@@ -502,7 +518,7 @@ export default function Home() {
         <input value={swapIn} onChange={(e) => setSwapIn(e.target.value)} />
         <label>Min Out</label>
         <input value={minOut} onChange={(e) => setMinOut(e.target.value)} />
-        <button disabled={!mintsValid || !wallet.connected} onClick={() => run(onSwap)}>Swap</button>
+        <button disabled={!mintsValid || !wallet.connected} onClick={() => run(onSwap, `Swap ${swapIn} Token ${swapDir === "AtoB" ? "A → B" : "B → A"}`)}>Swap</button>
       </div>
 
       <hr style={{ margin: "20px 0" }} />
@@ -510,7 +526,7 @@ export default function Home() {
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <label>LP Amount</label>
         <input value={lpAmount} onChange={(e) => setLpAmount(e.target.value)} />
-        <button disabled={!mintsValid || !wallet.connected} onClick={() => run(onRemove)}>Remove</button>
+        <button disabled={!mintsValid || !wallet.connected} onClick={() => run(onRemove, `Remove liquidity: ${lpAmount} LP tokens`)}>Remove</button>
       </div>
 
       {status && (
