@@ -306,5 +306,31 @@ describe("nja-swap", () => {
         console.log("✅ Proportional liquidity maintains ratio\n");
     });
 
+    it("Large swap respects price impact", async () => {
+        console.log("🔧 TEST 14: Large swap price impact\n");
+
+        const poolBefore = await program.account.pool.fetch(pool);
+        const priceBefore = poolBefore.reserveB.toNumber() / poolBefore.reserveA.toNumber();
+        console.log("📊 Price before:", priceBefore);
+
+        // Large swap (10% of pool)
+        const largeAmountIn = new anchor.BN(poolBefore.reserveA.toNumber() / 10);
+
+        await program.methods.swap(largeAmountIn, new anchor.BN(0), true).accounts({
+            pool, poolAuthority, tokenAVault, tokenBVault,
+            userTokenA, userTokenB, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+        }).signers([user]).rpc();
+
+        const poolAfter = await program.account.pool.fetch(pool);
+        const priceAfter = poolAfter.reserveB.toNumber() / poolAfter.reserveA.toNumber();
+        console.log("📊 Price after:", priceAfter);
+
+        // Price should have moved due to large swap
+        assert(priceAfter < priceBefore, "Large swap should impact price");
+        const priceImpact = (priceBefore - priceAfter) / priceBefore;
+        console.log("📊 Price impact:", (priceImpact * 100).toFixed(2) + "%");
+        assert(priceImpact > 0.01, "Significant swap should have measurable impact");
+        console.log("✅ Large swap shows expected price impact\n");
+    });
     
 });
