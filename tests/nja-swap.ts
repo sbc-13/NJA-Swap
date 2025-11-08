@@ -333,4 +333,25 @@ describe("nja-swap", () => {
         console.log("✅ Large swap shows expected price impact\n");
     });
     
+    it("Removing all liquidity works correctly", async () => {
+        console.log("🔧 TEST 15: Remove all remaining liquidity\n");
+
+        const lpTokenAccount = await getAccount(provider.connection, userLpToken);
+        const allLpTokens = new anchor.BN(Number(lpTokenAccount.amount));
+        console.log("💧 LP tokens to burn:", Number(lpTokenAccount.amount) / 1e9);
+
+        const tx = await program.methods.removeLiquidity(allLpTokens, new anchor.BN(0), new anchor.BN(0))
+            .accounts({
+                pool, poolAuthority, tokenAVault, tokenBVault, lpTokenMint,
+                userTokenA, userTokenB, userLpToken, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+            }).signers([user]).rpc();
+
+        const lpTokenAccountAfter = await getAccount(provider.connection, userLpToken);
+        assert.equal(Number(lpTokenAccountAfter.amount), 0, "All LP tokens should be burned");
+
+        const poolAfter = await program.account.pool.fetch(pool);
+        console.log("💧 Reserve A after:", poolAfter.reserveA.toNumber() / 1e9);
+        console.log("💧 Reserve B after:", poolAfter.reserveB.toNumber() / 1e9);
+        console.log("✅ All liquidity removed successfully. TX:", tx, "\n");
+    });
 });
