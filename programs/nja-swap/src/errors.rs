@@ -6,4 +6,8 @@ pub enum DexError {
     MathOverflow,
     #[msg("Invalid token pair - must be different")]
     InvalidTokenPair,
+    #[msg("Swap amount cannot be zero")]
+    InvalidAmount,
+    #[msg("Slippage tolerance exceeded")]
+    SlippageExceeded,
 }
