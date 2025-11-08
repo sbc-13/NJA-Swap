@@ -1,9 +1,14 @@
 import "@solana/wallet-adapter-react-ui/styles.css";
 import type { AppProps } from "next/app";
+import dynamic from "next/dynamic";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { useMemo } from "react";
+
+const WalletModalProvider = dynamic(
+  async () => (await import("@solana/wallet-adapter-react-ui")).WalletModalProvider,
+  { ssr: false }
+);
 
 const endpoint = process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8899";
 

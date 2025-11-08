@@ -3,7 +3,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8899";
 export const PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_PROGRAM_ID || "HazKKeRzso2bAryAMipJ741gA3oGU9wJmDFwHCt29gqJ"
+  process.env.NEXT_PUBLIC_PROGRAM_ID || "5jNzyaz9Lt5mRKKLeqNUgRspjaJEZPQoYaG5DW7UsvQB"
 );
 
 // Try to fetch IDL from a public URL or from /idl/nja_swap.json under the frontend public folder.

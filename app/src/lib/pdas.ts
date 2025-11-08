@@ -10,19 +10,19 @@ export function derivePdas(
     programId
   );
   const [poolAuthority] = PublicKey.findProgramAddressSync(
-    [Buffer.from("pool_authority"), pool.toBuffer()],
+    [Buffer.from("pool_authority"), tokenAMint.toBuffer(), tokenBMint.toBuffer()],
     programId
   );
   const [tokenAVault] = PublicKey.findProgramAddressSync(
-    [Buffer.from("token_a_vault"), pool.toBuffer()],
+    [Buffer.from("token_a_vault"), tokenAMint.toBuffer(), tokenBMint.toBuffer()],
     programId
   );
   const [tokenBVault] = PublicKey.findProgramAddressSync(
-    [Buffer.from("token_b_vault"), pool.toBuffer()],
+    [Buffer.from("token_b_vault"), tokenAMint.toBuffer(), tokenBMint.toBuffer()],
     programId
   );
   const [lpTokenMint] = PublicKey.findProgramAddressSync(
-    [Buffer.from("lp_token_mint"), pool.toBuffer()],
+    [Buffer.from("lp_token_mint"), tokenAMint.toBuffer(), tokenBMint.toBuffer()],
     programId
   );
   return { pool, poolAuthority, tokenAVault, tokenBVault, lpTokenMint };

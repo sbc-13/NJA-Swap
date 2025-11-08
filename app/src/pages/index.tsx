@@ -29,7 +29,27 @@ export default function Home() {
     return derivePdas(PROGRAM_ID, toPubkey(tokenA), toPubkey(tokenB));
   }, [mintsValid, tokenA, tokenB]);
 
+  const [poolData, setPoolData] = useState<any>(null);
   const [status, setStatus] = useState<string>("");
+
+  // Load pool data when PDAs change
+  const loadPool = useCallback(async () => {
+    if (!pdas || !wallet.publicKey) return;
+    try {
+      const program = await getProgram(wallet);
+      const pool = await program.account.pool.fetch(pdas.pool);
+      setPoolData(pool);
+      setStatus(`✅ Pool loaded: ${(pool.reserveA as any).toString()} / ${(pool.reserveB as any).toString()}`);
+    } catch (e: any) {
+      setPoolData(null);
+      if (e.message?.includes("Account does not exist")) {
+        setStatus("⚠️ Pool not initialized yet");
+      } else {
+        console.error(e);
+        setStatus(`❌ ${e?.message || e}`);
+      }
+    }
+  }, [pdas, wallet]);
 
   const run = useCallback(async (fn: () => Promise<string | void>) => {
     try {
@@ -197,18 +217,28 @@ export default function Home() {
       <input value={tokenB} onChange={(e) => setTokenB(e.target.value)} placeholder="Token B mint address" style={{ width: "100%", marginBottom: 8 }} />
 
       {pdas && (
-        <div style={{ fontSize: 12, background: "#f6f6f6", padding: 10, borderRadius: 6 }}>
+        <div style={{ fontSize: 12, background: "#f6f6f6", padding: 10, borderRadius: 6, marginTop: 10 }}>
           <div><b>Pool</b>: {pdas.pool.toBase58()}</div>
           <div><b>Authority</b>: {pdas.poolAuthority.toBase58()}</div>
           <div><b>Vault A</b>: {pdas.tokenAVault.toBase58()}</div>
           <div><b>Vault B</b>: {pdas.tokenBVault.toBase58()}</div>
           <div><b>LP Mint</b>: {pdas.lpTokenMint.toBase58()}</div>
+          {poolData && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #ddd" }}>
+              <div><b>Reserve A</b>: {(poolData.reserveA.toNumber() / LAMPORTS_9).toFixed(4)}</div>
+              <div><b>Reserve B</b>: {(poolData.reserveB.toNumber() / LAMPORTS_9).toFixed(4)}</div>
+              <div><b>LP Supply</b>: {(poolData.lpSupply.toNumber() / LAMPORTS_9).toFixed(4)}</div>
+            </div>
+          )}
         </div>
       )}
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
         <button disabled={!mintsValid || !wallet.connected} onClick={() => run(onInit)}>
           Initialize Pool
+        </button>
+        <button disabled={!mintsValid || !wallet.connected} onClick={loadPool}>
+          Load Pool
         </button>
       </div>
 
