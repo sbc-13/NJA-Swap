@@ -116,4 +116,50 @@ describe("nja-swap", () => {
         }).signers([user]).rpc();
         console.log("✅ Liquidity removed. TX:", tx, "\n");
     });
+
+    it("Fails to initialize pool with same token", async () => {
+        console.log("🔧 TEST 6: Reject same token pair\n");
+        const [badPool] = PublicKey.findProgramAddressSync(
+            [Buffer.from("pool"), tokenAMint.toBuffer(), tokenAMint.toBuffer()],
+            program.programId
+        );
+        const [badPoolAuthority] = PublicKey.findProgramAddressSync(
+            [Buffer.from("pool_authority"), tokenAMint.toBuffer(), tokenAMint.toBuffer()],
+            program.programId
+        );
+        const [badTokenAVault] = PublicKey.findProgramAddressSync(
+            [Buffer.from("token_a_vault"), tokenAMint.toBuffer(), tokenAMint.toBuffer()],
+            program.programId
+        );
+        const [badTokenBVault] = PublicKey.findProgramAddressSync(
+            [Buffer.from("token_b_vault"), tokenAMint.toBuffer(), tokenAMint.toBuffer()],
+            program.programId
+        );
+        const [badLpTokenMint] = PublicKey.findProgramAddressSync(
+            [Buffer.from("lp_token_mint"), tokenAMint.toBuffer(), tokenAMint.toBuffer()],
+            program.programId
+        );
+
+        try {
+            await program.methods.initializePool().accounts({
+                pool: badPool,
+                poolAuthority: badPoolAuthority,
+                tokenAMint: tokenAMint,
+                tokenBMint: tokenAMint,
+                tokenAVault: badTokenAVault,
+                tokenBVault: badTokenBVault,
+                lpTokenMint: badLpTokenMint,
+                payer: payer.publicKey,
+                systemProgram: SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+            }).rpc();
+            assert.fail("Should have failed with InvalidTokenPair");
+        } catch (err) {
+            assert.include(err.toString(), "InvalidTokenPair");
+            console.log("✅ Correctly rejected same token pair\n");
+        }
+    });
+
+    
 });
