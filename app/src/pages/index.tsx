@@ -66,7 +66,10 @@ export default function Home() {
     if (!wallet.publicKey || !wallet.signTransaction) throw new Error("Connect a wallet");
     if (!mintsValid || !pdas) throw new Error("Enter valid token mint addresses");
     const program = await getProgram(wallet);
-    const tx = await program.methods.initializePool().accounts({
+
+    const { SystemProgram, SYSVAR_RENT_PUBKEY } = await import("@solana/web3.js");
+
+    const txBuilder = program.methods.initializePool().accounts({
       pool: pdas.pool,
       poolAuthority: pdas.poolAuthority,
       tokenAMint: toPubkey(tokenA),
@@ -75,10 +78,16 @@ export default function Home() {
       tokenBVault: pdas.tokenBVault,
       lpTokenMint: pdas.lpTokenMint,
       payer: wallet.publicKey,
-      systemProgram: (await import("@solana/web3.js")).SystemProgram.programId,
+      systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
-      rent: (await import("@solana/web3.js")).SYSVAR_RENT_PUBKEY,
-    }).transaction();
+      rent: SYSVAR_RENT_PUBKEY,
+    });
+
+    const tx = await txBuilder.transaction();
+    tx.feePayer = wallet.publicKey;
+    const latest = await program.provider.connection.getLatestBlockhash();
+    tx.recentBlockhash = latest.blockhash;
+
     const signed = await wallet.signTransaction!(tx);
     const sig = await program.provider.connection.sendRawTransaction(signed.serialize());
     await program.provider.connection.confirmTransaction(sig, "confirmed");
@@ -139,7 +148,7 @@ export default function Home() {
     if (!mintsValid || !pdas) throw new Error("Enter valid token mint addresses");
     const program = await getProgram(wallet);
 
-    const { atAs } = await ensureAtas(
+    const { ixs, atAs } = await ensureAtas(
       program.provider.connection,
       wallet.publicKey,
       [toPubkey(tokenA), toPubkey(tokenB)]
@@ -147,7 +156,7 @@ export default function Home() {
     const [userTokenA, userTokenB] = atAs;
     const isAToB = swapDir === "AtoB";
 
-    const tx = await program.methods
+    const swapTx = await program.methods
       .swap(new BN(Math.floor(parseFloat(swapIn) * LAMPORTS_9)), new BN(Math.floor(parseFloat(minOut) * LAMPORTS_9)), isAToB)
       .accounts({
         pool: pdas.pool,
@@ -161,6 +170,14 @@ export default function Home() {
       })
       .transaction();
 
+    const tx = new Transaction();
+    for (const ix of ixs) tx.add(ix);
+    tx.add(...swapTx.instructions);
+
+    tx.feePayer = wallet.publicKey;
+    const latest = await program.provider.connection.getLatestBlockhash();
+    tx.recentBlockhash = latest.blockhash;
+
     const signed = await wallet.signTransaction!(tx);
     const sig = await program.provider.connection.sendRawTransaction(signed.serialize());
     await program.provider.connection.confirmTransaction(sig, "confirmed");
@@ -172,16 +189,17 @@ export default function Home() {
   const onRemove = useCallback(async () => {
     if (!wallet.publicKey || !wallet.signTransaction) throw new Error("Connect a wallet");
     if (!mintsValid || !pdas) throw new Error("Enter valid token mint addresses");
+    if (!poolData) throw new Error("Pool not loaded. Click 'Load Pool' first");
     const program = await getProgram(wallet);
 
-    const { atAs } = await ensureAtas(
+    const { ixs, atAs } = await ensureAtas(
       program.provider.connection,
       wallet.publicKey,
       [pdas.lpTokenMint, toPubkey(tokenA), toPubkey(tokenB)]
     );
     const [userLpToken, userTokenA, userTokenB] = atAs;
 
-    const tx = await program.methods
+    const removeTx = await program.methods
       .removeLiquidity(new BN(Math.floor(parseFloat(lpAmount) * LAMPORTS_9)), new BN(0), new BN(0))
       .accounts({
         pool: pdas.pool,
@@ -197,11 +215,19 @@ export default function Home() {
       })
       .transaction();
 
+    const tx = new Transaction();
+    for (const ix of ixs) tx.add(ix);
+    tx.add(...removeTx.instructions);
+
+    tx.feePayer = wallet.publicKey;
+    const latest = await program.provider.connection.getLatestBlockhash();
+    tx.recentBlockhash = latest.blockhash;
+
     const signed = await wallet.signTransaction!(tx);
     const sig = await program.provider.connection.sendRawTransaction(signed.serialize());
     await program.provider.connection.confirmTransaction(sig, "confirmed");
     return sig;
-  }, [wallet, mintsValid, pdas, tokenA, tokenB, lpAmount]);
+  }, [wallet, mintsValid, pdas, tokenA, tokenB, lpAmount, poolData]);
 
   return (
     <div>
