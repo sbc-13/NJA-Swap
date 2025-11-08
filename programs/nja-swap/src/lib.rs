@@ -34,13 +34,8 @@ pub mod nja_swap {
         pool.reserve_a = 0;
         pool.reserve_b = 0;
         pool.fee_numerator = 30; // Set a 0.3% fee
-        pool.authority_bump = *ctx
-            .bumps
-            .get("pool_authority")
-            .ok_or(DexError::MissingBump)?;
-
+        pool.authority_bump = ctx.bumps.pool_authority;
         msg!("Pool initialized successfully");
-
         Ok(())
     }
 
@@ -61,7 +56,8 @@ pub mod nja_swap {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer = payer, space = 200)]
+    /// Creating an account for the liquidity pool
+    #[account(init, payer = payer, space = Pool::LEN, seeds = [b"pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()], bump)]
     pub pool: Account<'info, Pool>,
     /// CHECK: PDA authority controlled by program
     #[account(seeds = [b"pool_authority", pool.key().as_ref()], bump)]
@@ -82,7 +78,8 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-pub struct Add {}
+pub struct Add {
+}
 
 #[derive(Accounts)]
 pub struct Swap<> {}
