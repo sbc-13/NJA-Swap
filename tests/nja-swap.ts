@@ -205,4 +205,41 @@ describe("nja-swap", () => {
             console.log("✅ Correctly rejected zero swap\n");
         }
     });
+
+    it("Fails to remove zero liquidity", async () => {
+        console.log("🔧 TEST 10: Reject zero liquidity removal\n");
+        try {
+            await program.methods.removeLiquidity(new anchor.BN(0), new anchor.BN(0), new anchor.BN(0))
+                .accounts({
+                    pool, poolAuthority, tokenAVault, tokenBVault, lpTokenMint,
+                    userTokenA, userTokenB, userLpToken, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+                }).signers([user]).rpc();
+            assert.fail("Should have failed with InvalidAmount");
+        } catch (err) {
+            assert.include(err.toString(), "InvalidAmount");
+            console.log("✅ Correctly rejected zero liquidity removal\n");
+        }
+    });
+
+    it("Fails to remove liquidity with slippage exceeded", async () => {
+        console.log("🔧 TEST 11: Reject liquidity removal with slippage\n");
+        const lpTokenAccount = await getAccount(provider.connection, userLpToken);
+        const lpTokenAmount = new anchor.BN(Number(lpTokenAccount.amount));
+        const unrealisticMinA = new anchor.BN(1_000_000 * 1e9);
+        const unrealisticMinB = new anchor.BN(1_000_000 * 1e9);
+
+        try {
+            await program.methods.removeLiquidity(lpTokenAmount, unrealisticMinA, unrealisticMinB)
+                .accounts({
+                    pool, poolAuthority, tokenAVault, tokenBVault, lpTokenMint,
+                    userTokenA, userTokenB, userLpToken, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+                }).signers([user]).rpc();
+            assert.fail("Should have failed with SlippageExceeded");
+        } catch (err) {
+            assert.include(err.toString(), "SlippageExceeded");
+            console.log("✅ Correctly rejected slippage on removal\n");
+        }
+    });
+
+    
 });
