@@ -63,7 +63,7 @@ yarn dev
 
 **Browser - Use the DEX:**
 1. Open Phantom → Switch to **Localhost** network
-2. Connect wallet at http://localhost:8899
+2. Connect wallet at http://localhost:3000
 3. Paste Token A and Token B addresses
 4. Click "Initialize Pool"
 5. Click "Add" (default 100 tokens each)

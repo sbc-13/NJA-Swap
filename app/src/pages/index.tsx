@@ -292,52 +292,134 @@ export default function Home() {
   }, [wallet.connected, mintsValid, tokenA, tokenB]);
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div>
-          <h1 style={{ margin: 0 }}>NJA-Swap Frontend</h1>
-          <p style={{ margin: "4px 0", fontSize: 12, color: "#666" }}>RPC: {process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8899"}</p>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <WalletMultiButton />
-          {balances && (
-            <div style={{ marginTop: 8, padding: 8, background: "#f0f0f0", borderRadius: 4, fontSize: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <b>💰 Balances:</b>
-                <button
-                  onClick={loadBalances}
-                  style={{
-                    marginLeft: 8,
-                    padding: "2px 6px",
-                    fontSize: 11,
-                    cursor: "pointer",
-                    border: "1px solid #ccc",
-                    borderRadius: 3,
-                    background: "white"
-                  }}
-                >
-                  🔄
-                </button>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+      {/* Header */}
+      <div style={{
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        padding: "24px 32px",
+        boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
+      }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <h1 style={{
+              margin: 0,
+              fontSize: 36,
+              fontWeight: 700,
+              background: "linear-gradient(135deg, #fff 0%, #f0f0f0 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              letterSpacing: "-0.5px"
+            }}>
+              🌊 NJA Swap
+            </h1>
+            <p style={{ margin: "4px 0", fontSize: 13, color: "rgba(255,255,255,0.8)", fontWeight: 500 }}>
+              Lightweight AMM DEX on Solana
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            {balances && (
+              <div style={{
+                padding: "12px 16px",
+                background: "rgba(255,255,255,0.15)",
+                backdropFilter: "blur(10px)",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.2)",
+                fontSize: 13,
+                color: "white",
+                minWidth: 180
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>💰 Balances</span>
+                  <button
+                    onClick={loadBalances}
+                    style={{
+                      padding: "4px 8px",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      border: "1px solid rgba(255,255,255,0.3)",
+                      borderRadius: 6,
+                      background: "rgba(255,255,255,0.1)",
+                      color: "white",
+                      fontWeight: 600
+                    }}
+                  >
+                    🔄
+                  </button>
+                </div>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ opacity: 0.9 }}>SOL:</span>
+                    <span style={{ fontWeight: 600 }}>{balances.sol.toFixed(4)}</span>
+                  </div>
+                  {mintsValid && (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ opacity: 0.9 }}>Token A:</span>
+                        <span style={{ fontWeight: 600 }}>{balances.a.toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ opacity: 0.9 }}>Token B:</span>
+                        <span style={{ fontWeight: 600 }}>{balances.b.toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ opacity: 0.9 }}>LP:</span>
+                        <span style={{ fontWeight: 600 }}>{balances.lp.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-              <div>SOL: <b>{balances.sol.toFixed(4)}</b></div>
-              {mintsValid && (
-                <>
-                  <div>Token A: <b>{balances.a.toFixed(2)}</b></div>
-                  <div>Token B: <b>{balances.b.toFixed(2)}</b></div>
-                  <div>LP: <b>{balances.lp.toFixed(2)}</b></div>
-                </>
-              )}
-            </div>
-          )}
+            )}
+            <WalletMultiButton />
+          </div>
         </div>
       </div>
 
-      <hr style={{ margin: "20px 0" }} />
-      <h2>Pool Configuration</h2>
-      <label>Token A Mint</label>
-      <input value={tokenA} onChange={(e) => setTokenA(e.target.value)} placeholder="Token A mint address" style={{ width: "100%", marginBottom: 8 }} />
-      <label>Token B Mint</label>
-      <input value={tokenB} onChange={(e) => setTokenB(e.target.value)} placeholder="Token B mint address" style={{ width: "100%", marginBottom: 8 }} />
+      {/* Main Content */}
+      <div style={{
+        maxWidth: 1200,
+        margin: "0 auto",
+        padding: "32px 32px 64px",
+        background: "white",
+        minHeight: "calc(100vh - 120px)",
+        boxShadow: "0 -4px 6px rgba(0,0,0,0.05)"
+      }}>
+      <h2 style={{
+        fontSize: 24,
+        fontWeight: 600,
+        marginBottom: 16,
+        color: "#1a202c"
+      }}>Pool Configuration</h2>
+      <label style={{ display: "block", marginBottom: 6, fontSize: 14, fontWeight: 500, color: "#4a5568" }}>Token A Mint</label>
+      <input
+        value={tokenA}
+        onChange={(e) => setTokenA(e.target.value)}
+        placeholder="Token A mint address"
+        style={{
+          width: "100%",
+          marginBottom: 16,
+          padding: 12,
+          border: "2px solid #e2e8f0",
+          borderRadius: 8,
+          fontSize: 14,
+          transition: "border-color 0.2s"
+        }}
+      />
+      <label style={{ display: "block", marginBottom: 6, fontSize: 14, fontWeight: 500, color: "#4a5568" }}>Token B Mint</label>
+      <input
+        value={tokenB}
+        onChange={(e) => setTokenB(e.target.value)}
+        placeholder="Token B mint address"
+        style={{
+          width: "100%",
+          marginBottom: 16,
+          padding: 12,
+          border: "2px solid #e2e8f0",
+          borderRadius: 8,
+          fontSize: 14,
+          transition: "border-color 0.2s"
+        }}
+      />
 
       {pdas && (
         <div style={{ fontSize: 12, background: "#f6f6f6", padding: 10, borderRadius: 6, marginTop: 10 }}>
@@ -356,16 +438,46 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-        <button disabled={!mintsValid || !wallet.connected} onClick={() => run(onInit)}>
+      <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
+        <button
+          disabled={!mintsValid || !wallet.connected}
+          onClick={() => run(onInit)}
+          style={{
+            padding: "12px 24px",
+            background: !mintsValid || !wallet.connected ? "#cbd5e0" : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+            border: "none",
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: !mintsValid || !wallet.connected ? "not-allowed" : "pointer",
+            transition: "all 0.2s",
+            boxShadow: !mintsValid || !wallet.connected ? "none" : "0 4px 6px rgba(102, 126, 234, 0.3)"
+          }}
+        >
           Initialize Pool
         </button>
-        <button disabled={!mintsValid || !wallet.connected} onClick={loadPool}>
+        <button
+          disabled={!mintsValid || !wallet.connected}
+          onClick={loadPool}
+          style={{
+            padding: "12px 24px",
+            background: "white",
+            color: "#667eea",
+            border: "2px solid #667eea",
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: !mintsValid || !wallet.connected ? "not-allowed" : "pointer",
+            opacity: !mintsValid || !wallet.connected ? 0.5 : 1,
+            transition: "all 0.2s"
+          }}
+        >
           Load Pool Info
         </button>
       </div>
 
-      <hr style={{ margin: "20px 0" }} />
+      <hr style={{ margin: "32px 0", border: "none", borderTop: "1px solid #e2e8f0" }} />
       <h2>Add Liquidity</h2>
       <div style={{ display: "flex", gap: 8 }}>
         <div>
@@ -401,11 +513,32 @@ export default function Home() {
         <button disabled={!mintsValid || !wallet.connected} onClick={() => run(onRemove)}>Remove</button>
       </div>
 
-      <div style={{ marginTop: 16, minHeight: 24 }}>{status}</div>
+      {status && (
+        <div style={{
+          marginTop: 16,
+          padding: 12,
+          background: status.includes("✅") ? "#f0fdf4" : status.includes("❌") ? "#fef2f2" : "#fefce8",
+          border: `1px solid ${status.includes("✅") ? "#86efac" : status.includes("❌") ? "#fca5a5" : "#fde047"}`,
+          borderRadius: 8,
+          fontSize: 14,
+          color: "#1a202c"
+        }}>
+          {status}
+        </div>
+      )}
 
-      <p style={{ marginTop: 24, fontSize: 12 }}>
-        Tip: On localnet, you need existing token mints and to fund your wallet with test SOL. Use your existing test flow or a small minting script to create token A/B and mint balances to your wallet accounts.
-      </p>
+      <div style={{
+        marginTop: 48,
+        padding: 16,
+        background: "#f7fafc",
+        borderLeft: "4px solid #667eea",
+        borderRadius: 4,
+        fontSize: 13,
+        color: "#4a5568"
+      }}>
+        <strong>💡 Tip:</strong> On localnet, run <code style={{ background: "#e2e8f0", padding: "2px 6px", borderRadius: 4 }}>yarn setup-tokens YOUR_ADDRESS</code> to create test tokens and fund your wallet.
+      </div>
+      </div>
     </div>
   );
 }
