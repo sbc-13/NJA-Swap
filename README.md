@@ -63,13 +63,13 @@ yarn dev
 
 **Browser - Use the DEX:**
 1. Open Phantom → Switch to **Localhost** network
-2. Connect wallet at http://localhost:3000
+2. Connect wallet at http://localhost:8899
 3. Paste Token A and Token B addresses
 4. Click "Initialize Pool"
 5. Click "Add" (default 100 tokens each)
 6. Click "Swap" to trade!
 
-**Note:** Balances auto-load. Click 🔄 to refresh after transactions.
+**Note:** Balances update on load. Click 🔄 to refresh after transactions.
 
 ## Deployment Options
 
