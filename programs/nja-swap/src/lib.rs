@@ -11,10 +11,47 @@ use utils::*;
 
 declare_id!("5jNzyaz9Lt5mRKKLeqNUgRspjaJEZPQoYaG5DW7UsvQB");
 
+/// Events for tracking pool activity
+#[event]
+pub struct PoolInitialized {
+    pub pool: Pubkey,
+    pub token_a_mint: Pubkey,
+    pub token_b_mint: Pubkey,
+    pub lp_token_mint: Pubkey,
+}
+
+#[event]
+pub struct LiquidityAdded {
+    pub pool: Pubkey,
+    pub user: Pubkey,
+    pub amount_a: u64,
+    pub amount_b: u64,
+    pub lp_tokens: u64,
+}
+
+#[event]
+pub struct LiquidityRemoved {
+    pub pool: Pubkey,
+    pub user: Pubkey,
+    pub amount_a: u64,
+    pub amount_b: u64,
+    pub lp_tokens_burned: u64,
+}
+
+#[event]
+pub struct SwapExecuted {
+    pub pool: Pubkey,
+    pub user: Pubkey,
+    pub amount_in: u64,
+    pub amount_out: u64,
+    pub is_a_to_b: bool,
+}
+
 #[program]
 pub mod nja_swap {
     use super::*;
 
+    /// Initialize a new liquidity pool
     pub fn initialize_pool(ctx: Context<Initialize>) -> Result<()> {
         let pool = &mut ctx.accounts.pool;
 
@@ -33,6 +70,14 @@ pub mod nja_swap {
         pool.reserve_b = 0;
         pool.fee_numerator = 30; // Set a 0.3% fee
         pool.authority_bump = ctx.bumps.pool_authority;
+
+        emit!(PoolInitialized {
+            pool: pool.key(),
+            token_a_mint: pool.token_a_mint,
+            token_b_mint: pool.token_b_mint,
+            lp_token_mint: pool.lp_token_mint,
+        });
+
         msg!("Pool initialized successfully");
         Ok(())
     }
@@ -83,8 +128,12 @@ pub mod nja_swap {
         )?;
 
         // mint lp tokens to the user account
-        let pool_key = pool.key();
-        let authority_seeds = &[b"pool_authority", pool_key.as_ref(), &[pool.authority_bump]];
+        let authority_seeds = &[
+            b"pool_authority",
+            pool.token_a_mint.as_ref(),
+            pool.token_b_mint.as_ref(),
+            &[pool.authority_bump],
+        ];
         token::mint_to(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -108,7 +157,14 @@ pub mod nja_swap {
             .checked_add(amount_b)
             .ok_or(DexError::MathOverflow)?;
 
-        // success!
+        emit!(LiquidityAdded {
+            pool: pool.key(),
+            user: ctx.accounts.user.key(),
+            amount_a,
+            amount_b,
+            lp_tokens,
+        });
+
         msg!(
             "Liquidity added: {} Token A, {} Token B, {} LP tokens",
             amount_a,
@@ -147,8 +203,12 @@ pub mod nja_swap {
         require!(amount_out > 0, DexError::InvalidAmount);
 
         // transfer `amount_in` to vault, `min_amount_out` to user.
-        let pool_key = pool.key();
-        let authority_seeds = &[b"pool_authority", pool_key.as_ref(), &[pool.authority_bump]];
+        let authority_seeds = &[
+            b"pool_authority",
+            pool.token_a_mint.as_ref(),
+            pool.token_b_mint.as_ref(),
+            &[pool.authority_bump],
+        ];
         if is_a_to_b {
             token::transfer(
                 CpiContext::new(
@@ -215,7 +275,14 @@ pub mod nja_swap {
                 .ok_or(DexError::MathOverflow)?;
         }
 
-        // success!
+        emit!(SwapExecuted {
+            pool: pool.key(),
+            user: ctx.accounts.user.key(),
+            amount_in,
+            amount_out,
+            is_a_to_b,
+        });
+
         msg!("Swap executed: {} in -> {} out", amount_in, amount_out);
         Ok(())
     }
@@ -267,8 +334,12 @@ pub mod nja_swap {
         )?;
 
         // transfer token pair to user
-        let pool_key = pool.key();
-        let authority_seeds = &[b"pool_authority", pool_key.as_ref(), &[pool.authority_bump]];
+        let authority_seeds = &[
+            b"pool_authority",
+            pool.token_a_mint.as_ref(),
+            pool.token_b_mint.as_ref(),
+            &[pool.authority_bump],
+        ];
         token::transfer(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -304,7 +375,14 @@ pub mod nja_swap {
             .checked_sub(amount_b)
             .ok_or(DexError::MathOverflow)?;
 
-        // sucess!
+        emit!(LiquidityRemoved {
+            pool: pool.key(),
+            user: ctx.accounts.user.key(),
+            amount_a,
+            amount_b,
+            lp_tokens_burned: lp_token_amount,
+        });
+
         msg!(
             "Liquidity removed: {} Token A, {} Token B",
             amount_a,
@@ -317,18 +395,48 @@ pub mod nja_swap {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     /// Creating an account for the liquidity pool
-    #[account(init, payer = payer, space = Pool::LEN, seeds = [b"pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()], bump)]
+    #[account(
+        init,
+        payer = payer,
+        space = Pool::LEN,
+        seeds = [b"pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+        bump
+    )]
     pub pool: Account<'info, Pool>,
     /// CHECK: PDA authority controlled by program
-    #[account(seeds = [b"pool_authority", pool.key().as_ref()], bump)]
+    #[account(
+        seeds = [b"pool_authority", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+        bump
+    )]
     pub pool_authority: UncheckedAccount<'info>,
     pub token_a_mint: Account<'info, Mint>,
     pub token_b_mint: Account<'info, Mint>,
-    #[account(init, payer = payer, token::mint = token_a_mint, token::authority = pool_authority, seeds = [b"token_a_vault", pool.key().as_ref()], bump)]
+    #[account(
+        init,
+        payer = payer,
+        token::mint = token_a_mint,
+        token::authority = pool_authority,
+        seeds = [b"token_a_vault", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+        bump
+    )]
     pub token_a_vault: Account<'info, TokenAccount>,
-    #[account(init, payer = payer, token::mint = token_b_mint, token::authority = pool_authority, seeds = [b"token_b_vault", pool.key().as_ref()], bump)]
+    #[account(
+        init,
+        payer = payer,
+        token::mint = token_b_mint,
+        token::authority = pool_authority,
+        seeds = [b"token_b_vault", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+        bump
+    )]
     pub token_b_vault: Account<'info, TokenAccount>,
-    #[account(init, payer = payer, mint::decimals = 9, mint::authority = pool_authority, seeds = [b"lp_token_mint", pool.key().as_ref()], bump)]
+    #[account(
+        init,
+        payer = payer,
+        seeds = [b"lp_token_mint", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+        bump,
+        mint::decimals = 9,
+        mint::authority = pool_authority
+    )]
     pub lp_token_mint: Account<'info, Mint>,
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -342,7 +450,10 @@ pub struct Add<'info> {
     #[account(mut)]
     pub pool: Account<'info, Pool>,
     /// CHECK: PDA authority controlled by program
-    #[account(seeds = [b"pool_authority", pool.key().as_ref()], bump = pool.authority_bump)]
+    #[account(
+        seeds = [b"pool_authority", pool.token_a_mint.as_ref(), pool.token_b_mint.as_ref()],
+        bump = pool.authority_bump
+    )]
     pub pool_authority: UncheckedAccount<'info>,
     #[account(mut, address = pool.token_a_vault)]
     pub token_a_vault: Account<'info, TokenAccount>,
@@ -365,7 +476,10 @@ pub struct Swap<'info> {
     #[account(mut)]
     pub pool: Account<'info, Pool>,
     /// CHECK: PDA authority controlled by program
-    #[account(seeds = [b"pool_authority", pool.key().as_ref()], bump = pool.authority_bump)]
+    #[account(
+        seeds = [b"pool_authority", pool.token_a_mint.as_ref(), pool.token_b_mint.as_ref()],
+        bump = pool.authority_bump
+    )]
     pub pool_authority: UncheckedAccount<'info>,
     #[account(mut, address = pool.token_a_vault)]
     pub token_a_vault: Account<'info, TokenAccount>,
@@ -384,7 +498,10 @@ pub struct Remove<'info> {
     #[account(mut)]
     pub pool: Account<'info, Pool>,
     /// CHECK: PDA authority controlled by program
-    #[account(seeds = [b"pool_authority", pool.key().as_ref()], bump = pool.authority_bump)]
+    #[account(
+        seeds = [b"pool_authority", pool.token_a_mint.as_ref(), pool.token_b_mint.as_ref()],
+        bump = pool.authority_bump
+    )]
     pub pool_authority: UncheckedAccount<'info>,
     #[account(mut, address = pool.token_a_vault)]
     pub token_a_vault: Account<'info, TokenAccount>,
