@@ -5,3 +5,42 @@ target
 node_modules
 test-ledger
 .yarn
+# macOS cruft
+.DS_Store
+**/._*
+
+# Rust / Cargo build
+/target/
+mini-dex/target/
+
+# Anchor local artifacts
+.anchor/
+
+# Node/Next.js
+mini-dex/node_modules/
+mini-dex/app/node_modules/
+mini-dex/app/.next/
+mini-dex/app/out/
+
+# Env files (do not commit secrets)
+*.env
+*.env.local
+mini-dex/app/.env.local
+
+# Yarn
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Solana / Anchor build keypairs (never commit private keys)
+mini-dex/target/deploy/*.json
+mini-dex/target/idl/*.ts
+
+# Optional: ignore IDE settings
+.vscode/
+.idea/
