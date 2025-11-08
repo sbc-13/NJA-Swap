@@ -176,5 +176,21 @@ describe("nja-swap", () => {
         }
     });
 
-   
+    it("Fails swap with slippage exceeded", async () => {
+        console.log("🔧 TEST 8: Reject swap with excessive slippage\n");
+        const amountIn = new anchor.BN(100 * 1e9);
+        const minAmountOut = new anchor.BN(1_000_000 * 1e9); // Unrealistically high
+        try {
+            await program.methods.swap(amountIn, minAmountOut, true).accounts({
+                pool, poolAuthority, tokenAVault, tokenBVault,
+                userTokenA, userTokenB, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+            }).signers([user]).rpc();
+            assert.fail("Should have failed with SlippageExceeded");
+        } catch (err) {
+            assert.include(err.toString(), "SlippageExceeded");
+            console.log("✅ Correctly rejected excessive slippage\n");
+        }
+    });
+
+    
 });
