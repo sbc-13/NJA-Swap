@@ -161,5 +161,20 @@ describe("nja-swap", () => {
         }
     });
 
-    
+    it("Fails to add zero liquidity", async () => {
+        console.log("🔧 TEST 7: Reject zero amounts\n");
+        try {
+            await program.methods.addLiquidity(new anchor.BN(0), new anchor.BN(1000), new anchor.BN(0))
+                .accounts({
+                    pool, poolAuthority, tokenAVault, tokenBVault, lpTokenMint,
+                    userTokenA, userTokenB, userLpToken, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+                }).signers([user]).rpc();
+            assert.fail("Should have failed with InvalidAmount");
+        } catch (err) {
+            assert.include(err.toString(), "InvalidAmount");
+            console.log("✅ Correctly rejected zero amount\n");
+        }
+    });
+
+   
 });
