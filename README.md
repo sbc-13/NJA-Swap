@@ -1,140 +1,100 @@
-# 🌊 NJA Swap — Mini DEX on Solana
+# 🌊 NJA Swap
 
-A lightweight **Automated Market Maker (AMM)** built on **Solana** using **Rust + Anchor**, enabling users to:
-- Swap tokens (e.g., SOL ↔ USDC)
-- Provide liquidity and earn fees
-- Withdraw liquidity anytime
+A lightweight AMM DEX on Solana. Swap tokens, provide liquidity, earn fees.
 
-> Built by **Team NJA** (Nouhalya · Joseph · Ankan)  
-> Bootcamp: Solana Project Week (2025)
+**Built by Team NJA** (Nouhalya · Joseph · Ankan) · Solana Bootcamp 2025
 
 ---
 
-## 🚀 Overview
+## Features
 
-**NJA Swap** is a simplified decentralized exchange inspired by Uniswap and Raydium.  
-It showcases how **AMMs**, **liquidity pools**, and **LP tokens** work on Solana while demonstrating PDAs, CPIs, and SPL Token Program integration.
+- Token swaps between any SPL token pair
+- Provide liquidity → earn 0.3% fees
+- Constant product formula (x × y = k)
+- Secure: PDA vaults, slippage protection, overflow checks
 
-### ✨ Key Features
-- **Token Swaps** between two SPL tokens
-- **Liquidity Provision** with LP token rewards
-- **Constant Product Formula (x * y = k)** pricing
-- **0.3% fee** distributed to liquidity providers
-- **Fully deployable on Devnet**
+## Architecture
 
----
+**Program (Rust + Anchor)** - 4 instructions:
+1. `initialize_pool` - Create new pool
+2. `add_liquidity` - Deposit tokens, get LP tokens
+3. `swap` - Trade with AMM pricing
+4. `remove_liquidity` - Burn LP tokens, withdraw funds
 
-## 🧠 Technical Architecture
-
-### On-Chain Program (Rust + Anchor)
-Implements four primary instructions:
-1. **Initialize Pool** — Create a new liquidity pool (e.g., SOL/USDC)
-2. **Add Liquidity** — Deposit token pair to receive LP tokens
-3. **Swap Tokens** — Execute trades using AMM constant product formula
-4. **Remove Liquidity** — Burn LP tokens to withdraw assets and fees
-
-Each pool tracks:
-- Token A and B reserves
-- Total LP token supply
-- Fee rate (0.3%)
-- PDA authority for vault accounts
+**Frontend (React + TypeScript)**
+- Wallet connection (Phantom/Backpack)
+- Pool info and balances
+- Swap and liquidity UI
 
 ---
 
-### Frontend (React + TypeScript)
-A minimal web app enabling users to:
-- Connect via **Phantom/Backpack Wallet**
-- View pool info and balances
-- Add or remove liquidity
-- Swap tokens with live price updates
+## Quick Start
 
-**Libraries:**
-- `@solana/web3.js`
-- `@solana/wallet-adapter-react`
-- `@coral-xyz/anchor`
+**Requirements:** Rust, Solana CLI v1.18+, Anchor v0.30+, Node.js v18+
 
----
-
-## 🧩 AMM Logic
-
-Constant product formula ensures:
-`x * y = k`
-
-Example:
-If pool has 100 SOL and 10,000 USDC → price = 1 SOL = 100 USDC.  
-A 10 SOL swap changes the reserves and adjusts price dynamically (slippage).
-
-No orderbook needed — math maintains the market balance automatically.
-
----
-
-## 🧰 Development Setup
-
-### Requirements
-- Rust (latest stable)
-- Solana CLI v1.18+
-- Anchor CLI v0.30+
-- Node.js v18+
-- Phantom Wallet (for Devnet testing)
-
-### Commands
 ```bash
-# Build & deploy program
-anchor build
-anchor deploy
-
-# Run local tests
+# Install and test
+git clone <your-repo>
+cd nja-swap
+yarn install
 anchor test
-
-# Start frontend
-cd frontend
-npm install
-npm run dev
 ```
+
+## Deployment
+
+**Local Testing** (recommended)
+```bash
+anchor test  # Builds, runs validator, deploys, tests
+```
+
+**Manual Localhost**
+```bash
+solana-test-validator --reset     # Terminal 1
+anchor build && anchor deploy     # Terminal 2
+```
+
+**Devnet**
+```bash
+solana config set --url https://api.devnet.solana.com
+solana airdrop 2
+anchor build && anchor deploy
+```
+
+## Run Frontend
+
+```bash
+cd app
+yarn install
+cp ../target/idl/nja_swap.json public/idl/nja_swap.json
+yarn dev
+```
+
+**Connect wallet:**
+1. Install Phantom
+2. Switch to Localhost network
+3. Airdrop SOL: `solana airdrop 5 <ADDRESS>`
+4. Open http://localhost:3000
+
+## Security
+
+- ✅ Checked arithmetic (no overflows)
+- ✅ Slippage protection via `min_amount_out`
+- ✅ Minimum liquidity lock (1000 LP tokens)
+- ✅ PDA-controlled vaults
+- ✅ Event logging
+
+## Troubleshooting
+
+**Authority mismatch error?**
+→ `pkill solana-test-validator && solana-test-validator --reset`
+
+**Insufficient liquidity error?**
+→ First deposit must satisfy `sqrt(amount_a × amount_b) > 1000`
+
+**Transaction failed?**
+→ Check network: `solana config get`
+→ Airdrop: `solana airdrop 2`
+
 ---
 
-## 🧪 Testing & Deployment
-- Unit tests for each instruction
-- Integration tests (pool creation → swap → withdrawal)
-- Deployed on Solana Devnet
-- End-to-end testing via web UI
-
----
-
-## 🔒 Security Considerations
-- Checked arithmetic (checked_mul, checked_div)
-- Slippage protection (min_amount_out param)
-- Proper signer and account ownership checks
-- Rent-exempt accounts enforced
-
----
-
-## 🧭 Known Limitations (v1)
-
-To stay within the 8-day timeline:
-- Two-token pools only (no multi-hop routing)
-- No price oracles
-- No governance or admin controls
-- Basic UI (no charts or analytics)
-
----
-
-## 📚 References
-- Anchor Book￼
-- Solana Cookbook￼
-- SPL Token Program￼
-- Raydium￼
-- Orca Whirlpool￼
-
----
-
-## 👥 Team NJA
-- Nouhalya
-- Joseph
-- Ankan
-
----
-
-## Demo
-TODO
-
+**Team NJA** · Solana Bootcamp 2025
