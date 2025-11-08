@@ -10,4 +10,8 @@ pub enum DexError {
     InvalidAmount,
     #[msg("Slippage tolerance exceeded")]
     SlippageExceeded,
+    #[msg("Insufficient liquidity in pool")]
+    InsufficientLiquidity,
+    #[msg("Fee cannot be greater than 100%")]
+    InvalidFee,
 }
