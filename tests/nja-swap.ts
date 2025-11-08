@@ -192,5 +192,17 @@ describe("nja-swap", () => {
         }
     });
 
-    
+    it("Fails to swap zero amount", async () => {
+        console.log("🔧 TEST 9: Reject zero swap amount\n");
+        try {
+            await program.methods.swap(new anchor.BN(0), new anchor.BN(0), true).accounts({
+                pool, poolAuthority, tokenAVault, tokenBVault,
+                userTokenA, userTokenB, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+            }).signers([user]).rpc();
+            assert.fail("Should have failed with InvalidAmount");
+        } catch (err) {
+            assert.include(err.toString(), "InvalidAmount");
+            console.log("✅ Correctly rejected zero swap\n");
+        }
+    });
 });
