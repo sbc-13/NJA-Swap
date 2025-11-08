@@ -43,10 +43,10 @@ describe("nja-swap", () => {
         console.log("✅ User received 100,000 Token A");
         console.log("✅ User received 100,000 Token B\n");
         [pool] = PublicKey.findProgramAddressSync([Buffer.from("pool"), tokenAMint.toBuffer(), tokenBMint.toBuffer()], program.programId);
-        [poolAuthority] = PublicKey.findProgramAddressSync([Buffer.from("pool_authority"), pool.toBuffer()], program.programId);
-        [tokenAVault] = PublicKey.findProgramAddressSync([Buffer.from("token_a_vault"), pool.toBuffer()], program.programId);
-        [tokenBVault] = PublicKey.findProgramAddressSync([Buffer.from("token_b_vault"), pool.toBuffer()], program.programId);
-        [lpTokenMint] = PublicKey.findProgramAddressSync([Buffer.from("lp_token_mint"), pool.toBuffer()], program.programId);
+        [poolAuthority] = PublicKey.findProgramAddressSync([Buffer.from("pool_authority"), tokenAMint.toBuffer(), tokenBMint.toBuffer()], program.programId);
+        [tokenAVault] = PublicKey.findProgramAddressSync([Buffer.from("token_a_vault"), tokenAMint.toBuffer(), tokenBMint.toBuffer()], program.programId);
+        [tokenBVault] = PublicKey.findProgramAddressSync([Buffer.from("token_b_vault"), tokenAMint.toBuffer(), tokenBMint.toBuffer()], program.programId);
+        [lpTokenMint] = PublicKey.findProgramAddressSync([Buffer.from("lp_token_mint"), tokenAMint.toBuffer(), tokenBMint.toBuffer()], program.programId);
         console.log("📍 Pool:", pool.toString());
         console.log("📍 Pool Authority:", poolAuthority.toString());
         console.log("📍 LP Token Mint:", lpTokenMint.toString() + "\n");
