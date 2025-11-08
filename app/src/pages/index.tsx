@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { BN } from "@coral-xyz/anchor";
@@ -30,6 +30,7 @@ export default function Home() {
   }, [mintsValid, tokenA, tokenB]);
 
   const [poolData, setPoolData] = useState<any>(null);
+  const [balances, setBalances] = useState<{ a: number; b: number; lp: number; sol: number } | null>(null);
   const [status, setStatus] = useState<string>("");
 
   // Load pool data when PDAs change
@@ -39,7 +40,7 @@ export default function Home() {
       const program = await getProgram(wallet);
       const pool = await program.account.pool.fetch(pdas.pool);
       setPoolData(pool);
-      setStatus(`✅ Pool loaded: ${(pool.reserveA as any).toString()} / ${(pool.reserveB as any).toString()}`);
+      setStatus(`✅ Pool loaded successfully`);
     } catch (e: any) {
       setPoolData(null);
       if (e.message?.includes("Account does not exist")) {
@@ -50,6 +51,58 @@ export default function Home() {
       }
     }
   }, [pdas, wallet]);
+
+  // Load wallet balances
+  const loadBalances = useCallback(async () => {
+    if (!wallet.publicKey) return;
+
+    try {
+      const program = await getProgram(wallet);
+
+      // Always get SOL balance
+      const solBalance = await program.provider.connection.getBalance(wallet.publicKey);
+
+      // If we have valid tokens, get token balances
+      let tokenBalances = { a: 0, b: 0, lp: 0 };
+
+      if (mintsValid && pdas) {
+        try {
+          const { getAccount } = await import("@solana/spl-token");
+          const { atAs } = await ensureAtas(
+            program.provider.connection,
+            wallet.publicKey,
+            [toPubkey(tokenA), toPubkey(tokenB), pdas.lpTokenMint]
+          );
+
+          const balancesArr = await Promise.all(
+            atAs.map(async (ata) => {
+              try {
+                const account = await getAccount(program.provider.connection, ata);
+                return Number(account.amount);
+              } catch {
+                return 0;
+              }
+            })
+          );
+
+          tokenBalances = {
+            a: balancesArr[0] / LAMPORTS_9,
+            b: balancesArr[1] / LAMPORTS_9,
+            lp: balancesArr[2] / LAMPORTS_9,
+          };
+        } catch (e) {
+          console.error("Failed to load token balances:", e);
+        }
+      }
+
+      setBalances({
+        ...tokenBalances,
+        sol: solBalance / LAMPORTS_9,
+      });
+    } catch (e: any) {
+      console.error("Failed to load balances:", e);
+    }
+  }, [wallet, mintsValid, pdas, tokenA, tokenB]);
 
   const run = useCallback(async (fn: () => Promise<string | void>) => {
     try {
@@ -189,7 +242,6 @@ export default function Home() {
   const onRemove = useCallback(async () => {
     if (!wallet.publicKey || !wallet.signTransaction) throw new Error("Connect a wallet");
     if (!mintsValid || !pdas) throw new Error("Enter valid token mint addresses");
-    if (!poolData) throw new Error("Pool not loaded. Click 'Load Pool' first");
     const program = await getProgram(wallet);
 
     const { ixs, atAs } = await ensureAtas(
@@ -227,13 +279,58 @@ export default function Home() {
     const sig = await program.provider.connection.sendRawTransaction(signed.serialize());
     await program.provider.connection.confirmTransaction(sig, "confirmed");
     return sig;
-  }, [wallet, mintsValid, pdas, tokenA, tokenB, lpAmount, poolData]);
+  }, [wallet, mintsValid, pdas, tokenA, tokenB, lpAmount]);
+
+  // Auto-load balances when wallet connects or tokens change
+  useEffect(() => {
+    if (wallet.connected) {
+      loadBalances();
+    } else {
+      setBalances(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallet.connected, mintsValid, tokenA, tokenB]);
 
   return (
     <div>
-      <h1>NJA-Swap Frontend</h1>
-      <p>RPC: {process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8899"}</p>
-      <WalletMultiButton />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div>
+          <h1 style={{ margin: 0 }}>NJA-Swap Frontend</h1>
+          <p style={{ margin: "4px 0", fontSize: 12, color: "#666" }}>RPC: {process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8899"}</p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <WalletMultiButton />
+          {balances && (
+            <div style={{ marginTop: 8, padding: 8, background: "#f0f0f0", borderRadius: 4, fontSize: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <b>💰 Balances:</b>
+                <button
+                  onClick={loadBalances}
+                  style={{
+                    marginLeft: 8,
+                    padding: "2px 6px",
+                    fontSize: 11,
+                    cursor: "pointer",
+                    border: "1px solid #ccc",
+                    borderRadius: 3,
+                    background: "white"
+                  }}
+                >
+                  🔄
+                </button>
+              </div>
+              <div>SOL: <b>{balances.sol.toFixed(4)}</b></div>
+              {mintsValid && (
+                <>
+                  <div>Token A: <b>{balances.a.toFixed(2)}</b></div>
+                  <div>Token B: <b>{balances.b.toFixed(2)}</b></div>
+                  <div>LP: <b>{balances.lp.toFixed(2)}</b></div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       <hr style={{ margin: "20px 0" }} />
       <h2>Pool Configuration</h2>
@@ -249,11 +346,11 @@ export default function Home() {
           <div><b>Vault A</b>: {pdas.tokenAVault.toBase58()}</div>
           <div><b>Vault B</b>: {pdas.tokenBVault.toBase58()}</div>
           <div><b>LP Mint</b>: {pdas.lpTokenMint.toBase58()}</div>
-          {poolData && (
+          {poolData && poolData.reserveA && poolData.reserveB && poolData.lpSupply && (
             <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #ddd" }}>
-              <div><b>Reserve A</b>: {(poolData.reserveA.toNumber() / LAMPORTS_9).toFixed(4)}</div>
-              <div><b>Reserve B</b>: {(poolData.reserveB.toNumber() / LAMPORTS_9).toFixed(4)}</div>
-              <div><b>LP Supply</b>: {(poolData.lpSupply.toNumber() / LAMPORTS_9).toFixed(4)}</div>
+              <div><b>Reserve A</b>: {(Number(poolData.reserveA.toString()) / LAMPORTS_9).toFixed(4)}</div>
+              <div><b>Reserve B</b>: {(Number(poolData.reserveB.toString()) / LAMPORTS_9).toFixed(4)}</div>
+              <div><b>LP Supply</b>: {(Number(poolData.lpSupply.toString()) / LAMPORTS_9).toFixed(4)}</div>
             </div>
           )}
         </div>
@@ -264,7 +361,7 @@ export default function Home() {
           Initialize Pool
         </button>
         <button disabled={!mintsValid || !wallet.connected} onClick={loadPool}>
-          Load Pool
+          Load Pool Info
         </button>
       </div>
 
