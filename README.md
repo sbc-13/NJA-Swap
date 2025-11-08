@@ -30,103 +30,91 @@ A lightweight AMM DEX on Solana. Swap tokens, provide liquidity, earn fees.
 
 ## Quick Start
 
-**Requirements:** Rust, Solana CLI v1.18+, Anchor v0.30+, Node.js v18+
+**Requirements:** Rust, Solana CLI v1.18+, Anchor v0.32+, Node.js v18+
 
 ```bash
-# Install and test
 git clone <your-repo>
 cd nja-swap
 yarn install
 anchor test
 ```
 
-## Deployment
+## Run Frontend Locally
 
-**Local Testing** (recommended)
+**Terminal 1 - Start validator:**
 ```bash
-anchor test  # Builds, runs validator, deploys, tests
+anchor localnet
 ```
 
-**Manual Localhost**
+**Terminal 2 - Setup test tokens:**
 ```bash
-solana-test-validator --reset     # Terminal 1
-anchor build && anchor deploy     # Terminal 2
+# Get your Phantom wallet address (Settings → Copy Address)
+yarn setup-tokens <YOUR_PHANTOM_ADDRESS>
+# Copy the Token A and Token B addresses printed
 ```
 
-**Devnet**
-```bash
-solana config set --url https://api.devnet.solana.com
-solana airdrop 2
-anchor build && anchor deploy
-```
-
-## Run Frontend
-
-**Setup:**
+**Terminal 3 - Start frontend:**
 ```bash
 cd app
 yarn install
 cp ../target/idl/nja_swap.json public/idl/nja_swap.json
+yarn dev
 ```
 
-**Start development:**
+**Browser - Use the DEX:**
+1. Open Phantom → Switch to **Localhost** network
+2. Connect wallet at http://localhost:3000
+3. Paste Token A and Token B addresses
+4. Click "Initialize Pool"
+5. Click "Add" (default 100 tokens each)
+6. Click "Swap" to trade!
+
+**Note:** Balances auto-load. Click 🔄 to refresh after transactions.
+
+## Deployment Options
+
+**Devnet:**
 ```bash
-# Terminal 1: Run validator with program
-anchor localnet
-
-# Terminal 2: Create test tokens
-ANCHOR_WALLET=~/.config/solana/id.json ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 yarn setup-tokens
-
-# Terminal 3: Start frontend
-cd app && yarn dev
+solana config set --url https://api.devnet.solana.com
+solana airdrop 2
+anchor build && anchor deploy
+# Update app/src/lib/anchor.ts with new PROGRAM_ID
 ```
 
-**Connect and test:**
-1. Install Phantom wallet, switch to **Localhost** network
-2. Copy the Token A and Token B mint addresses from the script output
-3. Open http://localhost:3000
-4. Connect wallet
-5. Paste token addresses → Initialize Pool
-6. Add liquidity (e.g., 100 tokens each)
-7. Try swapping!
-
-## Security
-
-- ✅ Checked arithmetic (no overflows)
-- ✅ Slippage protection via `min_amount_out`
-- ✅ Minimum liquidity lock (1000 LP tokens)
-- ✅ PDA-controlled vaults
-- ✅ Event logging
-
-## Alternative: Manual Token Creation
-
+**Manual Localhost:**
 ```bash
-# Using spl-token CLI
-spl-token create-token                    # Returns Token A address
-spl-token create-token                    # Returns Token B address
-spl-token create-account <TOKEN_A>
-spl-token create-account <TOKEN_B>
-spl-token mint <TOKEN_A> 10000
-spl-token mint <TOKEN_B> 10000
+solana-test-validator --reset
+anchor build && anchor deploy
 ```
 
 ## Troubleshooting
 
-**Authority mismatch error?**
+**"Insufficient liquidity" on first deposit?**
+→ Initial liquidity must satisfy `sqrt(amount_a × amount_b) > 1000`
+→ Default 100/100 works fine
+
+**"AccountNotInitialized" on swap?**
+→ Add liquidity first - pool needs reserves to price swaps
+
+**Frontend not loading balances?**
+→ Make sure wallet is on Localhost network
+→ Click 🔄 button next to balances
+
+**IDL/Program mismatch errors?**
+→ Rebuild: `anchor build`
+→ Re-copy IDL: `cp target/idl/nja_swap.json app/public/idl/nja_swap.json`
+→ Restart frontend
+
+**Authority mismatch on deploy?**
 → `pkill solana-test-validator && solana-test-validator --reset`
 
-**Insufficient liquidity error?**
-→ First deposit must satisfy `sqrt(amount_a × amount_b) > 1000`
+## Security Features
 
-**Transaction failed?**
-→ Check network: `solana config get`
-→ Airdrop: `solana airdrop 2`
-
-**Script can't find wallet?**
-→ Set `ANCHOR_WALLET` env var: `export ANCHOR_WALLET=~/.config/solana/id.json`
-
-**ts-node not found?**
-→ Run `yarn install` first to install dependencies
+- Checked arithmetic (overflow protection)
+- Slippage protection (`min_amount_out`)
+- Minimum liquidity lock (prevents inflation attacks)
+- PDA-controlled vaults
+- Event logging for all operations
 
 ---
 
