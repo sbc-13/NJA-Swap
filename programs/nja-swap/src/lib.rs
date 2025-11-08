@@ -226,7 +226,91 @@ pub mod nja_swap {
         min_amount_a: u64,
         min_amount_b: u64,
     ) -> Result<()> {
-        todo!()
+        let pool = &mut ctx.accounts.pool;
+        let lp_supply = ctx.accounts.lp_token_mint.supply;
+
+        // ensure amounts are non-zero
+        require!(lp_token_amount > 0, DexError::InvalidAmount);
+        require!(lp_supply > 0, DexError::InsufficientLiquidity);
+
+        // calculate amount_a
+        let amount_a = (pool.reserve_a as u128)
+            .checked_mul(lp_token_amount as u128)
+            .ok_or(DexError::MathOverflow)?
+        .checked_div(lp_supply as u128)
+        .ok_or(DexError::MathOverflow)? as u64;
+
+        // calculate amount_b
+        let amount_b = ((pool.reserve_b as u128)
+            .checked_mul(lp_token_amount as u128)
+            .ok_or(DexError::MathOverflow)?)
+        .checked_div(lp_supply as u128)
+        .ok_or(DexError::MathOverflow)? as u64;
+
+        // ensure amount to pay to user is under slippage.
+        require!(
+            amount_a >= min_amount_a && amount_b >= min_amount_b,
+            DexError::SlippageExceeded
+        );
+
+        // burn the lp tokens
+        token::burn(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Burn {
+                    mint: ctx.accounts.lp_token_mint.to_account_info(),
+                    from: ctx.accounts.user_lp_token.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
+                },
+            ),
+            lp_token_amount,
+        )?;
+
+        // transfer token pair to user
+        let pool_key = pool.key();
+        let authority_seeds = &[b"pool_authority", pool_key.as_ref(), &[pool.authority_bump]];
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.token_a_vault.to_account_info(),
+                    to: ctx.accounts.user_token_a.to_account_info(),
+                    authority: ctx.accounts.pool_authority.to_account_info(),
+                },
+                &[authority_seeds],
+            ),
+            amount_a,
+        )?;
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.token_b_vault.to_account_info(),
+                    to: ctx.accounts.user_token_b.to_account_info(),
+                    authority: ctx.accounts.pool_authority.to_account_info(),
+                },
+                &[authority_seeds],
+            ),
+            amount_b,
+        )?;
+
+        // update token reserves
+        pool.reserve_a = pool
+            .reserve_a
+            .checked_sub(amount_a)
+            .ok_or(DexError::MathOverflow)?;
+        pool.reserve_b = pool
+            .reserve_b
+            .checked_sub(amount_b)
+            .ok_or(DexError::MathOverflow)?;
+
+        // sucess!
+        msg!(
+            "Liquidity removed: {} Token A, {} Token B",
+            amount_a,
+            amount_b
+        );
+        Ok(())
     }
 }
 
@@ -296,4 +380,24 @@ pub struct Swap<'info> {
 }
 
 #[derive(Accounts)]
-pub struct Remove {}
+pub struct Remove<'info> {
+    #[account(mut)]
+    pub pool: Account<'info, Pool>,
+    /// CHECK: PDA authority controlled by program
+    #[account(seeds = [b"pool_authority", pool.key().as_ref()], bump = pool.authority_bump)]
+    pub pool_authority: UncheckedAccount<'info>,
+    #[account(mut, address = pool.token_a_vault)]
+    pub token_a_vault: Account<'info, TokenAccount>,
+    #[account(mut, address = pool.token_b_vault)]
+    pub token_b_vault: Account<'info, TokenAccount>,
+    #[account(mut, address = pool.lp_token_mint)]
+    pub lp_token_mint: Account<'info, Mint>,
+    #[account(mut, constraint = user_token_a.mint == pool.token_a_mint)]
+    pub user_token_a: Account<'info, TokenAccount>,
+    #[account(mut, constraint = user_token_b.mint == pool.token_b_mint)]
+    pub user_token_b: Account<'info, TokenAccount>,
+    #[account(mut, constraint = user_lp_token.mint == pool.lp_token_mint)]
+    pub user_lp_token: Account<'info, TokenAccount>,
+    pub user: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
