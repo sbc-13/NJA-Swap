@@ -271,5 +271,40 @@ describe("nja-swap", () => {
         console.log("✅ Sequential swaps maintain invariant\n");
     });
 
-   
+    it("Add liquidity with proportional amounts", async () => {
+        console.log("🔧 TEST 13: Add proportional liquidity\n");
+
+        const poolBefore = await program.account.pool.fetch(pool);
+        const ratioBefore = poolBefore.reserveA.toNumber() / poolBefore.reserveB.toNumber();
+        console.log("📊 Ratio before:", ratioBefore);
+        console.log("💧 Reserve A before:", poolBefore.reserveA.toNumber() / 1e9);
+        console.log("💧 Reserve B before:", poolBefore.reserveB.toNumber() / 1e9);
+
+        // Add liquidity proportional to current pool ratio
+        const addAmount = 1_000 * 1e9;
+        const amountA = new anchor.BN(addAmount);
+        const amountB = new anchor.BN(Math.floor(addAmount / ratioBefore));
+
+        console.log("📥 Adding Token A:", addAmount / 1e9);
+        console.log("📥 Adding Token B:", amountB.toNumber() / 1e9);
+
+        await program.methods.addLiquidity(amountA, amountB, new anchor.BN(0)).accounts({
+            pool, poolAuthority, tokenAVault, tokenBVault, lpTokenMint,
+            userTokenA, userTokenB, userLpToken, user: user.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+        }).signers([user]).rpc();
+
+        const poolAfter = await program.account.pool.fetch(pool);
+        const ratioAfter = poolAfter.reserveA.toNumber() / poolAfter.reserveB.toNumber();
+        console.log("📊 Ratio after:", ratioAfter);
+        console.log("💧 Reserve A after:", poolAfter.reserveA.toNumber() / 1e9);
+        console.log("💧 Reserve B after:", poolAfter.reserveB.toNumber() / 1e9);
+
+        // When adding proportional liquidity, ratio should remain very stable
+        const ratioChange = Math.abs(ratioAfter - ratioBefore) / ratioBefore;
+        console.log("📊 Ratio change:", (ratioChange * 100).toFixed(4) + "%");
+        assert(ratioChange < 0.01, `Pool ratio should remain stable (changed by ${(ratioChange * 100).toFixed(4)}%)`);
+        console.log("✅ Proportional liquidity maintains ratio\n");
+    });
+
+    
 });
