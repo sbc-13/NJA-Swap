@@ -51,7 +51,7 @@ anchor localnet
 **Terminal 2 - Setup test tokens:**
 ```bash
 # Get your Phantom wallet address (Settings → Copy Address)
-yarn setup-tokens <YOUR_PHANTOM_ADDRESS>
+ANCHOR_WALLET=~/.config/solana/id.json ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 yarn setup-tokens <YOUR_PHANTOM_ADDRESS>
 # Copy the Token A and Token B addresses printed
 ```
 
